@@ -57,9 +57,33 @@ function render() {
     <p class="muted">AI outputs shown: ${live.length} · live Gemini ${liveG} · live browser model ${liveO}</p>
     <p><button class="btn" data-t="sessions">sessions.csv</button><button class="btn" data-t="responses">responses.csv</button>
        <button class="btn" data-t="ai_logs">ai_logs.csv</button></p>
+    <h2>Sessions</h2>
     <table class="tbl"><tr><th>uniqname</th><th>cond</th><th>order</th><th>status</th><th>answered</th><th>catch</th><th>time (s)</th>
-    <th>quiz tries</th><th>code</th><th>started</th></tr>${rows}</table>`;
+    <th>quiz tries</th><th>code</th><th>started</th></tr>${rows}</table>
+    <h2>Answers (newest first)</h2>
+    <p class="muted">Correct answer = ground truth (logged vs. weighed kcal, ±25 %). Only you can see this page (password).
+    Green = correct, red = wrong. "AI" columns only in the With-AI condition.</p>
+    <table class="tbl small"><tr><th>uniqname</th><th>cond</th><th>meal</th><th>trial</th><th>logged</th><th>true kcal</th>
+    <th>correct answer</th><th>first answer</th><th>final answer</th><th>own estimate</th><th>conf</th><th>sec</th>
+    <th>Gemini says</th><th>2nd AI says</th><th>corrections</th></tr>${answers()}</table>`;
   document.querySelectorAll("[data-t]").forEach((b) => b.addEventListener("click", () =>
     download(b.dataset.t + ".csv", toCSV(DATA[b.dataset.t].map((r) => flatten(b.dataset.t, r))))));
+}
+const N = { about_right: "About right", too_high: "Too high", too_low: "Too low" };
+function cell(v, label) {
+  if (!v) return "<td></td>";
+  const ok = v === label;
+  return `<td style="color:${ok ? "#1f8a4c" : "#b42318"};font-weight:600">${N[v] || v}</td>`;
+}
+function answers() {
+  return DATA.responses.map((r) => ({ pid: r.participant_id, cond: r.condition, ...r.data }))
+    .sort((a, b) => b.ts - a.ts).map((d) => `<tr>
+      <td>${d.pid}</td><td>${d.cond}</td><td>${d.pos + 1}${d.is_catch ? " (attention check)" : ""}</td><td>${d.trial_id}</td>
+      <td>${d.logged_kcal}</td><td>${Math.round(d.true_kcal)}</td><td><b>${d.is_catch ? "Too low (instructed)" : N[d.label]}</b></td>
+      ${d.is_catch ? `<td></td>${cell(d.final_verdict, "too_low")}` : `${d.cond === "ai" ? cell(d.initial_verdict, d.label) : "<td></td>"}${cell(d.final_verdict, d.label)}`}
+      <td>${d.final_kcal ?? ""}</td><td>${d.confidence ?? ""}</td><td>${d.rt_total_s ?? ""}</td>
+      ${d.ai_gemini_verdict ? cell(d.ai_gemini_verdict, d.label).replace("</td>", ` <small>(${d.ai_gemini_kcal}, ${String(d.ai_gemini_source).startsWith("live") ? "live" : "cached"})</small></td>`) : "<td></td>"}
+      ${d.ai_own_verdict ? cell(d.ai_own_verdict, d.label).replace("</td>", ` <small>(${d.ai_own_kcal}, ${String(d.ai_own_source).startsWith("live") ? "live" : "cached"})</small></td>`) : "<td></td>"}
+      <td>${d.n_revisions ?? ""}</td></tr>`).join("");
 }
 $("#go").addEventListener("click", load);
