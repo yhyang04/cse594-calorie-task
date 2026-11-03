@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calorie Log Check — With AI</title>
+<link rel="stylesheet" href="../static/style.css">
+</head>
+<body data-cond="ai" data-ntotal="7">
+<header class="top"><span class="brand">Calorie Log Check</span><span class="cond-tag ai">With AI</span><span id="progress-text"></span></header>
+<div class="progress"><div id="progress-bar"></div></div>
+
+<!-- 1. Welcome -->
+<main id="s-welcome" class="screen card narrow">
+  <h1>Is the app's calorie log right?</h1>
+  <p>This is a short study for CSE 594 (about 8–9 minutes, 7 meals).
+  You will look at photos of real cafeteria meals and judge whether a food-diary app logged their calories correctly, with help from an AI assistant.</p>
+  <p class="muted">Your answers are stored on a secure server and used only for this class assignment. Your uniqname is used only to link your two sessions (with and without AI) and is replaced by an anonymous ID in the analysis. You can stop at any time.</p>
+  <label class="field">Your uniqname <input id="pid" autocomplete="off" placeholder="e.g. yuhanyyh"></label>
+  <p class="hint">Please use the same uniqname in both conditions.</p>
+  <button id="btn-start" class="btn primary">I agree — start</button>
+  <p id="start-err" class="err"></p>
+</main>
+
+<!-- 2. Instructions -->
+<main id="s-instr" class="screen card">
+  <h1>Instructions</h1>
+  <p>Food-diary apps can log a meal's calories automatically, but the logged value is sometimes wrong.
+  For each meal you will see <b>an overhead photo</b> and <b>the calories the app logged</b>. Your job:</p>
+  <ol>
+    <li>Decide whether the logged value is
+      <span class="pill about_right">About right</span> (within ±25&nbsp;% of the meal's true calories),
+      <span class="pill too_high">Too high</span> (more than 25&nbsp;% above), or
+      <span class="pill too_low">Too low</span> (more than 25&nbsp;% below).</li>
+    <li>Type <b>your own estimate</b> of the meal's calories (a rough number is fine).</li>
+    <li>Say how confident you are.</li>
+  </ol>
+  <p>The true calories were measured by weighing every ingredient (Nutrition5k dataset). Photos are taken from directly above a single serving.</p>
+
+  <div class="example">
+    <img src="../img/dish_1557862738.jpg" alt="example meal">
+    <div>
+      <h3>Example</h3>
+      <p>The app logged <b>530 kcal</b> for this steak. The steak actually has about <b>320 kcal</b>.</p>
+      <p>530 is more than 25&nbsp;% above 320 (the upper limit would be about 400), so the correct answer is <span class="pill too_high">Too high</span>.</p>
+    </div>
+  </div>
+
+  <details class="cheat" open><summary>Calorie cheat sheet (also available during the task)</summary>
+    <ul class="cheat-list">
+      <li>1 cup cooked rice or pasta (~160 g) ≈ 200 kcal</li>
+      <li>100 g grilled chicken breast ≈ 165 kcal · 100 g steak ≈ 250 kcal</li>
+      <li>1 large egg ≈ 75 kcal · 1 slice of pizza (~100 g) ≈ 270 kcal</li>
+      <li>1 tbsp oil or butter ≈ 100–120 kcal · 2 tbsp dressing ≈ 100–150 kcal</li>
+      <li>A handful (28 g) of nuts ≈ 165 kcal · 1 cup salad greens ≈ 10 kcal</li>
+      <li>1 medium apple ≈ 95 kcal · 1 cup berries ≈ 70 kcal</li>
+    </ul>
+  </details>
+
+  
+  <div class="ai-explain">
+    <h2>Your AI assistant</h2>
+    <p>For every meal you will <b>first give your own answer</b>. Then an AI assistant analyses the photo <b>live</b> and you can keep or change your answer.</p>
+    <ul>
+      <li><b>Detailed AI</b> (Google Gemini vision model) lists the foods it sees with estimated grams and calories.</li>
+      <li><b>Second-opinion AI</b> is a small image-only model trained on ~2,700 other cafeteria meals; it gives only a total.</li>
+      <li>Neither AI sees the logged value. Each AI's verdict compares the logged value with its <i>own</i> estimate using the same ±25&nbsp;% rule.</li>
+      <li>In our tests each AI's verdict was right about <b>7 out of 10</b> times. It most often misjudges <b>portion sizes</b> and hidden calories (oil, sauce, cheese).</li>
+      <li>If you think the AI got something wrong (e.g. "the rice portion is twice as big"), you can <b>tell it</b> and it will re-estimate.</li>
+    </ul>
+  </div>
+  
+  <button class="btn primary" data-go="s-quiz">Continue to a short check</button>
+</main>
+
+<!-- 3. Comprehension / attention check -->
+<main id="s-quiz" class="screen card narrow">
+  <h1>Quick check</h1>
+  <p class="muted">Answer these to make sure the instructions are clear.</p>
+  <div class="q"><p>1. The app logged <b>300 kcal</b>. You believe the meal has about <b>280 kcal</b>. What should you answer?</p>
+    <label><input type="radio" name="q1" value="about_right"> About right</label>
+    <label><input type="radio" name="q1" value="too_high"> Too high</label>
+    <label><input type="radio" name="q1" value="too_low"> Too low</label></div>
+  <div class="q"><p>2. The app logged <b>600 kcal</b>. You believe the meal has about <b>350 kcal</b>. What should you answer?</p>
+    <label><input type="radio" name="q2" value="about_right"> About right</label>
+    <label><input type="radio" name="q2" value="too_high"> Too high</label>
+    <label><input type="radio" name="q2" value="too_low"> Too low</label></div>
+  
+  <div class="q"><p>3. Does the AI see the calorie value that the app logged?</p>
+    <label><input type="radio" name="q3" value="yes"> Yes</label>
+    <label><input type="radio" name="q3" value="no"> No</label></div>
+  
+  <button id="btn-quiz" class="btn primary">Submit</button>
+  <button class="btn" data-go="s-instr">Re-read instructions</button>
+  <p id="quiz-msg" class="err"></p>
+</main>
+
+<!-- 4. Trial -->
+<main id="s-trial" class="screen card wide">
+  <div class="trial-grid">
+    <div class="photo-col">
+      <img id="t-img" alt="meal photo">
+      <details class="cheat"><summary>Calorie cheat sheet</summary>
+        <ul class="cheat-list">
+          <li>1 cup cooked rice/pasta ≈ 200 kcal</li><li>100 g chicken breast ≈ 165 · steak ≈ 250 kcal</li>
+          <li>1 egg ≈ 75 · 1 pizza slice ≈ 270 kcal</li><li>1 tbsp oil/butter ≈ 100–120 kcal</li>
+          <li>28 g nuts ≈ 165 · 1 cup greens ≈ 10 kcal</li><li>1 apple ≈ 95 · 1 cup berries ≈ 70 kcal</li>
+        </ul></details>
+    </div>
+    <div class="answer-col">
+      <div class="logged">The app logged <span id="t-logged"></span> <small>kcal</small></div>
+      <p id="t-attention" class="attention"></p>
+
+      <section id="step1">
+        <h3 class="ai-only">Step 1 — your own answer</h3>
+        <p class="lbl">The logged value is…</p>
+        <div class="verdicts" data-name="initial">
+          <button class="v about_right" data-v="about_right">About right<br><small>within ±25 %</small></button>
+          <button class="v too_high" data-v="too_high">Too high<br><small>&gt; 25 % above</small></button>
+          <button class="v too_low" data-v="too_low">Too low<br><small>&gt; 25 % below</small></button>
+        </div>
+        <label class="field inline">My estimate <input id="initial-kcal" type="number" min="0" max="5000" inputmode="numeric"> kcal</label>
+        <div class="noai-only conf-block"></div>
+        <button id="btn-step1" class="btn primary"></button>
+        <p id="step1-err" class="err"></p>
+      </section>
+
+      <section id="ai-panel" class="ai-only hidden">
+        <div id="ai-loading" class="loading"><span class="spinner"></span> The AI is analysing the photo…</div>
+        <div id="ai-content" class="hidden">
+          <div id="ai-agree"></div>
+          <div id="ai-scale"></div>
+          <div class="ai-cards">
+            <div class="ai-card">
+              <h4>Detailed AI <small>(Gemini)</small></h4>
+              <div class="ai-total"><span id="g-total"></span> kcal <span id="g-verdict" class="pill"></span></div>
+              <div class="muted">Confidence: <span id="g-conf"></span></div>
+              <table class="tbl small" id="g-ingr"></table>
+              <p class="ai-note" id="g-note"></p>
+            </div>
+            <div class="ai-card second">
+              <h4>Second-opinion AI <small>(image-only)</small></h4>
+              <div class="ai-total"><span id="o-total"></span> kcal <span id="o-verdict" class="pill"></span></div>
+              <p class="muted">Gives only a total; no breakdown.</p>
+            </div>
+          </div>
+          <div class="revise">
+            <p class="lbl">Did the detailed AI miss or misjudge something? Tell it (optional, up to 2 times):</p>
+            <div class="revise-row"><input id="rev-msg" maxlength="300" placeholder="e.g. the rice portion is about twice as big; there is also a creamy sauce">
+              <button id="btn-rev" class="btn">Re-estimate</button></div>
+            <p id="rev-status" class="muted"></p>
+            <div id="rev-out"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="step2" class="ai-only hidden">
+        <h3>Step 2 — your final answer</h3>
+        <p class="lbl">The logged value is…</p>
+        <div class="verdicts" data-name="final">
+          <button class="v about_right" data-v="about_right">About right<br><small>within ±25 %</small></button>
+          <button class="v too_high" data-v="too_high">Too high<br><small>&gt; 25 % above</small></button>
+          <button class="v too_low" data-v="too_low">Too low<br><small>&gt; 25 % below</small></button>
+        </div>
+        <label class="field inline">My estimate <input id="final-kcal" type="number" min="0" max="5000" inputmode="numeric"> kcal</label>
+        <div class="conf-block"></div>
+        <button id="btn-step2" class="btn primary">Submit final answer</button>
+        <p id="step2-err" class="err"></p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- 5. Survey -->
+<main id="s-survey" class="screen card narrow">
+  <h1>Almost done — a few questions</h1>
+  <form id="survey"></form>
+  <button id="btn-survey" class="btn primary">Submit</button>
+  <p id="survey-err" class="err"></p>
+</main>
+
+<!-- 6. Done -->
+<main id="s-done" class="screen card narrow">
+  <h1>Thank you!</h1>
+  <p>Your completion code: <b id="done-code" class="code"></b></p>
+  <p id="done-next"></p>
+  <p>Please put your name in the participant column of the class spreadsheet and, after finishing both conditions, add your comment comparing the two.</p>
+</main>
+
+<main id="s-term" class="screen card narrow">
+  <h1>Study ended</h1>
+  <p>The quick check was not passed after 3 tries, so this session has ended. You are welcome to reload the page and start over after re-reading the instructions carefully.</p>
+</main>
+
+<script>window.CATCH = {"kcal": 123, "verdict": "too_low"}; window.ASSET = "../";</script>
+<script src="../static/config.js"></script>
+<script type="module" src="../static/ownmodel.js"></script>
+<script src="../static/study.js"></script>
+</body>
+</html>

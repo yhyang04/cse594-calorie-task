@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Own model self-test</title><link rel="stylesheet" href="../static/style.css"></head>
+<body><main class="card wide">
+<h1>Own model in the browser vs. A2 predictions</h1>
+<p class="muted">Runs the CLIP ViT-B/32 + MLP model in this browser on the study photos and compares with the A2 (PyTorch, fp32) predictions.</p>
+<p><label>Admin password <input id="key" type="password" style="padding:6px"></label>
+<label>Precision <select id="dtype"><option value="q8">q8 (~90 MB)</option><option value="fp16">fp16 (~175 MB)</option><option value="fp32">fp32 (~350 MB)</option></select></label>
+<label>Photos <select id="n"><option value="20">20</option><option value="210">all 210</option></select></label>
+<button class="btn primary" id="go">Run</button></p>
+<p id="status"></p><div id="sum"></div><table class="tbl small" id="tbl"></table>
+</main>
+<script>window.ASSET = "../";</script>
+<script src="../static/config.js"></script>
+<script type="module">
+import "../static/ownmodel.js";
+const $ = (q) => document.querySelector(q);
+$("#go").onclick = async () => {
+  const key = $("#key").value.trim(), dtype = $("#dtype").value, n = +$("#n").value;
+  const h = window.SB_PUBLIC_KEY ? { apikey: window.SB_PUBLIC_KEY, Authorization: "Bearer " + window.SB_PUBLIC_KEY } : {};
+  const r = await fetch(`${window.API}/a2own?key=${encodeURIComponent(key)}`, { headers: h });
+  if (!r.ok) { $("#status").textContent = "wrong password?"; return; }
+  const ref = (await r.json()).slice(0, n);
+  $("#status").textContent = "loading model…";
+  const t0 = performance.now();
+  await window.OwnModel.load(dtype);
+  $("#status").textContent = `model loaded in ${((performance.now() - t0) / 1000).toFixed(1)} s — predicting…`;
+  const rows = [];
+  for (const d of ref) {
+    const p = await window.OwnModel.predict(`../png/${d.dish_id}.png`);
+    rows.push({ ...d, live: p.kcal, ms: p.ms, diff: p.kcal - d.a2_kcal });
+    $("#status").textContent = `${rows.length}/${ref.length}`;
+  }
+  const ad = rows.map((x) => Math.abs(x.diff)), rel = rows.map((x) => Math.abs(x.diff) / x.a2_kcal);
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  $("#sum").innerHTML = `<p><b>${dtype}</b>: mean |live − A2| = <b>${mean(ad).toFixed(1)} kcal</b> (max ${Math.max(...ad).toFixed(1)}),
+    mean relative diff ${(100 * mean(rel)).toFixed(2)} %, within 5 % of A2: ${rows.filter((x, i) => rel[i] <= 0.05).length}/${rows.length},
+    median time per photo ${rows.map((x) => x.ms).sort((a, b) => a - b)[rows.length >> 1]} ms</p>`;
+  $("#tbl").innerHTML = "<tr><th>dish</th><th>A2 kcal</th><th>live kcal</th><th>diff</th><th>ms</th></tr>" +
+    rows.map((x) => `<tr><td>${x.dish_id}</td><td>${x.a2_kcal}</td><td>${x.live}</td><td>${x.diff.toFixed(1)}</td><td>${x.ms}</td></tr>`).join("");
+  $("#status").textContent = "done";
+};
+</script>
+</body></html>
