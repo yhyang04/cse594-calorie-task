@@ -1,6 +1,7 @@
 (() => {
   const COND = document.body.dataset.cond;
   const IS_AI = COND === "ai";
+  const OWN_LIVE = !!window.OWN_DTYPE && window.OWN_DTYPE !== "off";
   const NAMES = { about_right: "About right", too_high: "Too high", too_low: "Too low" };
   let S = null;        // {session_id, order, trials}
   let idx = 0;         // current trial index
@@ -50,7 +51,7 @@
     try {
       S = await post("/api/start", { participant_id: $("#pid").value, condition: COND, ua: navigator.userAgent });
       S.trials.forEach((t) => { t.img = window.ASSET + "img/" + t.dish + ".jpg"; const im = new Image(); im.src = t.img; }); // preload photos
-      if (IS_AI && window.OwnModel) window.OwnModel.load().catch(() => {}); // start loading the browser-side CLIP model
+      if (IS_AI && window.OwnModel && OWN_LIVE) window.OwnModel.load().catch(() => {}); // start loading the browser-side CLIP model
       show("s-instr");
     } catch (e) { $("#start-err").textContent = e.message; }
   });
@@ -108,6 +109,7 @@
 
   // own model (CLIP ViT-B/32 + MLP head) runs in the participant's browser; null result -> server shows A2 prediction
   async function ownPredict(dish) {
+    if (!OWN_LIVE) return { error: "browser model disabled (A2 prediction shown)" };
     if (!window.OwnModel) return { error: "own model script not loaded" };
     try {
       const r = await Promise.race([window.OwnModel.predict(window.ASSET + "png/" + dish + ".png"),
@@ -162,11 +164,23 @@
   });
 
   async function submit(body) {
+    // Guard against double clicks: without it a second click while the request was in flight advanced
+    // two meals at once and silently skipped the next one (seen twice in the in-class session, Nov 12).
+    if (st.submitting) return;
+    st.submitting = true;
+    const cur = idx;
+    $$("#btn-step1, #btn-step2").forEach((b) => (b.disabled = true));
     const now = performance.now();
     body.timing = { step1_ms: Math.round((st.t_step1 || now) - st.t0), ai_view_ms: st.t_ai ? Math.round(now - st.t_ai) : null, total_ms: Math.round(now - st.t0) };
     try {
       await post("/api/response", { session_id: S.session_id, pos: S.trials[idx].pos, ...body });
-    } catch (e) { const el = IS_AI && !S.trials[idx].attention ? "#step2-err" : "#step1-err"; $(el).textContent = e.message; return; }
+    } catch (e) {
+      st.submitting = false;
+      $$("#btn-step1, #btn-step2").forEach((b) => (b.disabled = false));
+      const el = IS_AI && !S.trials[idx].attention ? "#step2-err" : "#step1-err"; $(el).textContent = e.message; return;
+    }
+    if (idx !== cur) return;
+    $("#btn-step2").disabled = false;
     if (idx + 1 < S.trials.length) startTrial(idx + 1);
     else { idx = S.trials.length; setProgress(); buildSurvey(); show("s-survey"); }
   }
